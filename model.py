@@ -11,5 +11,5 @@ class InputEmbeddings(nn.Module):
     self.embeddings = nn.Embedding(vocab_size, d_model) # Create the embedding layer
 
   def forward(self, x): # Forward pass through the embedding layer
-    return self.embeddings(x)  * math.sqrt(self.d_model) # Scale the embeddings by the square root of the model dimension as per the original Transformer paper
+    return self.embeddings(x)  * math.sqrt(self.d_model) # Scale the embeddings by the square root of the model dimension as per the original Transformer paper (attention is all you need)
 
