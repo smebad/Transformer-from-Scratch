@@ -13,7 +13,8 @@ class InputEmbeddings(nn.Module):
   def forward(self, x): # Forward pass through the embedding layer
     return self.embeddings(x)  * math.sqrt(self.d_model) # Scale the embeddings by the square root of the model dimension as per the original Transformer paper (attention is all you need)
   
-  def positional_encoding(self, d_model: int, seq_Len: int, dropout: float) -> None: # Method to create positional encodings
+class PositionalEncoding(nn.Module):
+  def __init__(self, d_model: int, seq_Len: int, dropout: float) -> None: # Initialize the positional encoding layer 
     super().__init__()
     self.d_model = d_model # Dimension of the model
     self.seq_Len = seq_Len # Length of the input sequence
