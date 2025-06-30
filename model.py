@@ -38,3 +38,16 @@ class PositionalEncoding(nn.Module):
   def forward(self, x): # Forward pass through the positional encoding layer
     x = x + (self.pe[:, :x.shape[1], :]).requires_grad_(False) # Add the positional encodings to the input embeddings and set the positional encodings as non-learnable
     return self.dropout(x) # Apply dropout to the output of the positional encoding layer
+
+class LayerNormalization(nn.Module):
+  def __init__(self, eps: float = 1e-6): # Initialize the layer normalization layer with a small epsilon value of 10-6 to avoid division by zero
+    super().__init__()
+    self.eps = eps  # Small value to avoid division by zero
+    self.alpha = nn.Parameter(torch.ones(1)) # Scale parameter for normalization (multplication)
+    self.bias = nn.Parameter(torch.zeros(1)) # Bias parameter for normalization (addition)
+
+  def forward(self, x): # Forward pass through the layer normalization layer
+    mean = x.mean(dim = -1, keepdim = True) # Calculate the mean of the input tensor along the last dimension
+    std = x.std(dim = -1, keepdim = True) # Calculate the standard deviation of the input tensor along the last dimension)
+    return self.alpha * (x - mean) / (std + self.eps) + self.bias # Normalize the input tensor and apply the scale and bias parameters, formula from the original Transformer paper
+    
