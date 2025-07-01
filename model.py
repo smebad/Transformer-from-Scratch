@@ -50,4 +50,16 @@ class LayerNormalization(nn.Module):
     mean = x.mean(dim = -1, keepdim = True) # Calculate the mean of the input tensor along the last dimension
     std = x.std(dim = -1, keepdim = True) # Calculate the standard deviation of the input tensor along the last dimension)
     return self.alpha * (x - mean) / (std + self.eps) + self.bias # Normalize the input tensor and apply the scale and bias parameters, formula from the original Transformer paper
+
+class FeedForwardBlock(nn.Module):
+
+  def __init__(self, d_model: int, d_ff: int, dropout: float) -> None:  # Initialize the feedforward block with the model dimension, feedforward dimension, and dropout rate
+    super().__init__()
+    self.linear1 = nn.Linear(d_model, d_ff) # First linear layer to project the input to the feedforward dimension (W1 and b1 in the original Transformer paper)
+    self.dropout = nn.Dropout(dropout) # Dropout layer for regularization
+    self.linear2 = nn.Linear(d_ff, d_model) # Second linear layer to project the output back to the model dimension (W2 and b2 in the original Transformer paper)
+
+  def forward(self, x): # Forward pass through the feedforward block
+    # (Batch, Seq_Len, d_model) -> (Batch, Seq_Len, d_ff) -> (Batch, Seq_Len, d_model). Formula from the original Transformer paper
+    return self.linear2(self.dropout(torch.relu(self.linear1(x)))) # Apply the first linear layer, ReLU activation, dropout, and the second linear layer in sequence
     
