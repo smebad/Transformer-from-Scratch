@@ -146,3 +146,34 @@ class Encoder(nn.Module):
     for layer in self.layers:
       x = layer(x, mask) # Apply each encoder layer to the input tensor
     return self.norm(x) # Apply layer normalization to the final output of the encoder and return the output tensor
+  
+class DecoderBlock(nn.Module):
+
+  def __init__(self, self_attention_block: MultiHeadAttentionBlock, cross_attention_block: MultiHeadAttentionBlock, feed_forward_block: FeedForwardBlock, dropout: float) -> None:
+    super().__init__()
+    self.self_attention_block = self_attention_block # Multi-head attention block for self-attention
+    self.cross_attention_block = cross_attention_block # Multi-head attention block for cross-attention (encoder-decoder attention)
+    self.feed_forward_block = feed_forward_block # Feedforward block for the decoder layer
+    self.residual_connections = nn.ModuleList([ResidualConnection(dropout) for i in range(3)]) # Residual connections for the self-attention block, cross-attention block, and feedforward block
+
+  def forward(self, x, encoder_output, src_mask=None, tgt_mask=None): # src_mask is used to prevent attention to certain positions in the source sequence, tgt_mask is used to prevent attention to future positions in the target sequence
+    x = self.residual_connections[0](x, lambda x: self.self_attention_block(x, x, x, tgt_mask)) # Apply the self-attention block with residual connection to the target sequence
+    x = self.residual_connections[1](x, lambda x: self.cross_attention_block(x, encoder_output, encoder_output, src_mask)) # query is the target sequence, key and value are the encoder output, apply the cross-attention block with residual connection
+    x = self.residual_connections[2](x, self.feed_forward_block)
+    return x
+  
+class Decoder(nn.Module):
+
+  def __init__(self, layers: nn.ModuleList) -> None:
+    super().__init__()
+    self.layers = layers # List of decoder layers
+    self.norm = LayerNormalization()
+
+  def forward(self, x, encoder_output, src_mask, tgt_mask):
+    for layer in self.layers:
+      x = layer(x, encoder_output, src_mask, tgt_mask) # Apply each decoder layer to the input tensor
+    return self.norm(x) # Apply layer normalization
+
+
+    
+    
