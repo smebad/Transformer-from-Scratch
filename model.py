@@ -109,3 +109,14 @@ class MultiHeadAttentionBlock(nn.Module):
 
     # (Batch, Seq_Len, d_model) -> (Batch, Seq_Len, d_model)
     return self.w_o(x) # Apply the output layer to the reshaped tensor (Batch, Seq_Len, d_model)
+  
+
+class ResidualConnection(nn.Module):
+  
+  def __init__(self, dropout: float) -> None:
+    super().__init__()
+    self.dropout = nn.Dropout(dropout)
+    self.norm = LayerNormalization()
+
+  def forward(self, x, sublayer): # Forward pass through the residual connection layer
+    return x + self.dropout(sublayer(self.norm(x))) # Add and norm from the original Transformer paper, apply dropout to the output of the sublayer and add it to the input tensor, then apply layer normalization
