@@ -120,3 +120,29 @@ class ResidualConnection(nn.Module):
 
   def forward(self, x, sublayer): # Forward pass through the residual connection layer
     return x + self.dropout(sublayer(self.norm(x))) # Add and norm from the original Transformer paper, apply dropout to the output of the sublayer and add it to the input tensor, then apply layer normalization
+  
+
+class EncoderBlock(nn.Module):
+
+  def __init__(self, self_attention_block: MultiHeadAttentionBlock, feed_forward_block: FeedForwardBlock, dropout: float) -> None:
+    super().__init__()
+    self.self_attention_block = self_attention_block # Multi-head attention block for self-attention
+    self.feed_forward_block = feed_forward_block # Feedforward block for the encoder layer
+    self.residual_connection1 = nn.ModuleList([ResidualConnection(dropout) for _ in range(2)]) # Residual connection for the self-attention block and feedforward block
+
+  def forward(self, x, src_mask=None): # src mask is used to prevent attention to certain positions (e.g., padding tokens)
+    x = self.residual_connections[0](x, lambda x: self.self_attention_block(x, x, x, src_mask)) # Apply the self-attention block with residual connection
+    x = self.residual_connections[1](x, self.feed_forward_block)
+    return x # Apply the feedforward block with residual connection and return the output tensor
+  
+class Encoder(nn.Module):
+
+  def __init__(self, layers: nn.ModuleList) -> None:
+    super().__init__()
+    self.layers = layers # List of encoder layers
+    self.norm = LayerNormalization() # Layer normalization for the final output of the encoder
+
+  def forward(self, x, mask=None):
+    for layer in self.layers:
+      x = layer(x, mask) # Apply each encoder layer to the input tensor
+    return self.norm(x) # Apply layer normalization to the final output of the encoder and return the output tensor
