@@ -62,4 +62,50 @@ class FeedForwardBlock(nn.Module):
   def forward(self, x): # Forward pass through the feedforward block
     # (Batch, Seq_Len, d_model) -> (Batch, Seq_Len, d_ff) -> (Batch, Seq_Len, d_model). Formula from the original Transformer paper
     return self.linear2(self.dropout(torch.relu(self.linear1(x)))) # Apply the first linear layer, ReLU activation, dropout, and the second linear layer in sequence
+  
+class MultiHeadAttentionBlock(nn.Module):
+
+  def __init__(self, d_model: int, h: int, dropot: float) -> None:  # Initialize the multi-head attention block with the model dimension, number of heads, and dropout rate
+    super().__init__()
+    self.d_model = d_model # Dimension of the model
+    self.h = h # Number of attention heads
+    assert d_model % h == 0, "d_model must be divisible by h" # Ensure that the model dimension is divisible by the number of heads
+
+    self.d_k = d_model // h # formula from the original Transformer paper, dimension of each head
+    self.w_q = nn.Linear(d_model, d_model) # Query layer (Wq in the original Transformer paper)
+    self.w_k = nn.Linear(d_model, d_model) # Key layer (Wk in the original Transformer paper)
+    self.w_v = nn.Linear(d_model, d_model) # Value layer (Wv in the original Transformer paper)
+
+    self.w_o = nn.Linear(d_model, d_model) # Output layer (Wo in the original Transformer paper)
+    self.dropout = nn.Dropout(dropot) # Dropout layer for regularization
+
+  @staticmethod # Static method to calculate the attention scores
+  def attention(query, key, value, mask, dropout: nn.Dropout):
+    d_k = query.size(-1) # Get the dimension of the keys
+
+    # (Batch, h, Seq_Len, d_k) @ (Batch, h, d_k, Seq_Len) -> (Batch, h, Seq_Len, Seq_Len)
+    attention_scores = (query @ key.transpose(-2, -1)) / math.sqrt(d_k) # Calculate the attention scores using the dot product of the query and key tensors, scaled by the square root of d_k
+    if mask is not None:
+      attention_scores = attention_scores.masked_fill(mask == 0, -1e9) # Set the masked positions to a very large negative value to prevent attention to those positions
+    if dropout is not None:
+      attention_scores = dropout(attention_scores) # Apply dropout to the attention scores if specified
+
+    return (attention_scores @ value), attention_scores # Return the weighted sum of the values and the attention scores
+
+
+  def forward(self, q, k, v, mask=None): # Forward pass through the multi-head attention block - mask is used to prevent attention to certain positions (e.g., padding tokens)
+    query = self.w_q(q) # Apply the query layer to the input tensor (Batch, Seq_Len, d_model) -> (Batch, Seq_Len, d_model)
+    key = self.w_k(k) # Apply the key layer to the input tensor (Batch, Seq_Len, d_model) -> (Batch, Seq_Len, d_model)
+    value = self.w_v(v) # Apply the value layer to the input tensor (Batch, Seq_Len, d_model) -> (Batch, Seq_Len, d_model)
+
+    query = query.view(query.shape[0], query.shape[1], self.h, self.d_k).transpose(1, 2) # Reshape the query tensor to (Batch, h, Seq_Len, d_k) and transpose the sequence length and head dimensions
+    key = key.view(key.shape[0], key.shape[1], self.h, self.d_k).transpose(1, 2) # Reshape the key tensor to (Batch, h, Seq_Len, d_k) and transpose the sequence length and head dimensions
+    value = value.view(value.shape[0], value.shape[1], self.h, self.d_k).transpose(1, 2) # Reshape the value tensor to (Batch, h, Seq_Len, d_k) and transpose the sequence length and head dimensions
     
+    x, self.attention_scores = MultiHeadAttentionBlock.attention(query, key, value, mask, self.dropout) # Calculate the attention scores and apply dropout
+    
+    # (Batch, h, Seq_Len, d_k) -> (Batch, Seq_Len, h * d_k) -> (Batch, Seq_Len, d_model)
+    x = x.transpose(1, 2).contiguous().view(x.shape[0], -1, self.h * self.d_k) # Transpose the head and sequence length dimensions, then reshape the tensor to (Batch, Seq_Len, d_model)
+
+    # (Batch, Seq_Len, d_model) -> (Batch, Seq_Len, d_model)
+    return self.w_o(x) # Apply the output layer to the reshaped tensor (Batch, Seq_Len, d_model)
