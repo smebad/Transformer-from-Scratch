@@ -174,6 +174,12 @@ class Decoder(nn.Module):
       x = layer(x, encoder_output, src_mask, tgt_mask) # Apply each decoder layer to the input tensor
     return self.norm(x) # Apply layer normalization
 
+class ProjectionLayer(nn.Module):
 
+  def __init__(self, d_model: int, vocab_size: int) -> None:
+    super().__init__()
+    self.projection = nn.Linear(d_model, vocab_size) # Linear layer to project the output of the decoder to the vocabulary size
     
-    
+  def forward(self, x):
+    # (Batch, Seq_Len, d_model) -> (Batch, Seq_Len, vocab_size)
+    return torch.log_softmax(self.projection(x), dim = -1) # Apply the projection layer and log softmax to the output tensor, return the log probabilities of the vocabulary tokens
