@@ -183,3 +183,72 @@ class ProjectionLayer(nn.Module):
   def forward(self, x):
     # (Batch, Seq_Len, d_model) -> (Batch, Seq_Len, vocab_size)
     return torch.log_softmax(self.projection(x), dim = -1) # Apply the projection layer and log softmax to the output tensor, return the log probabilities of the vocabulary tokens
+  
+class Transformer(nn.Module):
+
+  def __init__(self, encoder: Encoder, decoder: Decoder, src_embed: InputEmbeddings, tgt_embed: InputEmbeddings, src_pos: PositionalEncoding, tgt_pos: PositionalEncoding, projection_layer: ProjectionLayer) -> None:
+    super().__init__()
+    self.encoder = encoder # Encoder for the input sequence
+    self.decoder = decoder # Decoder for the target sequence
+    self.src_embed = src_embed # Input embeddings for the source sequence
+    self.tgt_embed = tgt_embed # Input embeddings for the target sequence
+    self.src_pos = src_pos # Positional encoding for the source sequence
+    self.tgt_pos = tgt_pos # Positional encoding for the target sequence
+    self.projection_layer = projection_layer # Projection layer to project the output of the decoder to the vocabulary size
+
+  def encode(self, src, src_mask):
+    src = self.src_embed(src) # Apply the source embeddings to the input sequence
+    src = self.src_pos(src) # Apply positional encoding to the source embeddings
+    return self.encoder(src, src_mask) # Encode the source sequence using the encoder
+  
+  def decode(self, tgt, encoder_output, src_mask, tgt_mask):
+    tgt = self.tgt_embed(tgt) # Apply the target embeddings to the target sequence
+    tgt = self.tgt_pos(tgt) # Apply positional encoding to the target embeddings
+    return self.decoder(tgt, encoder_output, src_mask, tgt_mask) # Decode the target sequence using the decoder
+  
+  def project(self, x):
+    return self.projection_layer(x) # Project the output of the decoder to the vocabulary size using the projection layer
+  
+def build_transformer(src_vocab_size: int, tgt_vocab_size: int, src_seq_len: int, tgt_seq_len: int, d_model: int = 512, N: int = 6, h: int = 8, dropout: float = 0.1, d_ff: int = 2048) -> Transformer: # Function to build the Transformer model
+  
+  # embedding layers
+  src_embed = InputEmbeddings(d_model, src_vocab_size) # Create the source embeddings layer
+  tgt_embed = InputEmbeddings(d_model, tgt_vocab_size) # Create the target embeddings layer
+
+  # positional encoding layers
+  src_pos = PositionalEncoding(d_model, src_seq_len, dropout) # Create the positional encoding layer for the source sequence
+  tgt_pos = PositionalEncoding(d_model, tgt_seq_len, dropout) # Create the positional encoding layer for the target sequence
+
+  # encoder blocks
+  encoder_blocks = [] # List to hold the encoder blocks
+  for i in range(N):
+    encoder_self_attention_block = MultiHeadAttentionBlock(d_model, h, dropout) # Create the multi-head attention block for self-attention
+    feed_forward_block = FeedForwardBlock(d_model, d_ff, dropout) # Create the feedforward block for the encoder layer
+    encoder_block = EncoderBlock(encoder_self_attention_block, feed_forward_block, dropout) # Create the encoder block with self-attention and feedforward blocks
+    encoder_blocks.append(encoder_block) # Append the encoder block to the list
+
+  # decoder blocks
+  decoder_blocks = [] 
+  for i in range(N):
+    decoder_self_attention_block = MultiHeadAttentionBlock(d_model, h, dropout)
+    decoder_cross_attention_block = MultiHeadAttentionBlock(d_model, h, dropout) # Create the multi-head attention block for cross-attention (encoder-decoder attention)
+    feed_forward_block = FeedForwardBlock(d_model, d_ff, dropout) # Create the feedforward block for the decoder layer
+    decoder_block = DecoderBlock(decoder_self_attention_block, decoder_cross_attention_block, feed_forward_block, dropout)
+    decoder_blocks.append(decoder_block) # Append the decoder block to the list
+
+  # creating the encoder and decoder
+  encoder = Encoder(nn.ModuleList(encoder_blocks)) # Create the encoder with the list of encoder blocks
+  decoder = Decoder(nn.ModuleList(decoder_blocks)) # Create the decoder with the list of decoder blocks
+
+  # projection layer (output layer)
+  projection_layer = ProjectionLayer(d_model, tgt_vocab_size) # Create the projection layer to project the output of the decoder to the vocabulary size
+
+  # creating the transformer model
+  transformer = Transformer(encoder, decoder, src_embed, tgt_embed, src_pos, tgt_pos, projection_layer) # Create the Transformer model with the encoder, decoder, embeddings, positional encodings, and projection layer
+
+  # initialize the weights of the model (Xavier initialization)
+  for p in transformer.parameters():
+    if p.dim() > 1: # Apply Xavier initialization to weights
+      nn.init.xavier_uniform_(p) # Initialize the weights of the model using Xavier uniform initialization
+
+  return transformer # Return the Transformer model
