@@ -3,6 +3,7 @@ import torch.nn as nn
 from torch.utils.data import random_split, DataLoader, Dataset
 
 from dataset import BilingualDataset, casual_mask
+from model import build_transformer
 
 from datasets import load_dataset
 from tokenizers import Tokenizer
@@ -59,4 +60,18 @@ def get_ds(config):
   train_dataloader = DataLoader(train_ds, batch_size=config['batch_size'], shuffle=True) # create a dataloader for the training set
   val_dataloader = DataLoader(val_ds, batch_size=1, shuffle=True) # create a dataloader for the validation set with batch size of 1
 
-  return train_dataloader, val_dataloader, tokenizer_src, tokenizer_tgt                           
+  return train_dataloader, val_dataloader, tokenizer_src, tokenizer_tgt 
+
+def get_model(config, vocab_src_len, vocab_tgt_len): # vocab_src_len and vocab_tgt_len are the lengths of the source and target vocabularies
+  model = build_transformer(vocab_src_len, vocab_tgt_len, config['seq_len'], config['seq_len'], config['d_model'])
+  return model 
+
+def train_model(config):
+  # defining the devcie
+  device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+  print(f"Device: {device}")
+
+  Path(config['model_folder']).mkdir(parents=True, exist_ok=True) # create the model folder if it does not exist
+
+  train_dataloader, val_dataloader, tokenizer_src, tokenizer_tgt = get_ds(config) # get the dataloaders and tokenizers
+  model = get_model(config, tokenizer_src.get_vocab_size(), tokenizer_tgt.get_vocab_size()).to(device) # get the model and move it to the device
