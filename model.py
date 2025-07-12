@@ -6,12 +6,12 @@ class InputEmbeddings(nn.Module):
 
   def __init__(self, d_model: int, vocab_size: int):
     super().__init__() # Call the parent constructor
-    self.embeddings = d_model # Size of the embeddings
+    self.d_model = d_model # Size of the embeddings
     self.vocab_size = vocab_size # Size of the vocabulary
-    self.embeddings = nn.Embedding(vocab_size, d_model) # Create the embedding layer
+    self.embedding = nn.Embedding(vocab_size, d_model) # Create the embedding layer
 
   def forward(self, x): # Forward pass through the embedding layer
-    return self.embeddings(x)  * math.sqrt(self.d_model) # Scale the embeddings by the square root of the model dimension as per the original Transformer paper (attention is all you need)
+    return self.embedding(x)  * math.sqrt(self.d_model) # Scale the embeddings by the square root of the model dimension as per the original Transformer paper (attention is all you need)
   
 class PositionalEncoding(nn.Module):
   def __init__(self, d_model: int, seq_Len: int, dropout: float) -> None: # Initialize the positional encoding layer 
@@ -128,7 +128,7 @@ class EncoderBlock(nn.Module):
     super().__init__()
     self.self_attention_block = self_attention_block # Multi-head attention block for self-attention
     self.feed_forward_block = feed_forward_block # Feedforward block for the encoder layer
-    self.residual_connection1 = nn.ModuleList([ResidualConnection(dropout) for _ in range(2)]) # Residual connection for the self-attention block and feedforward block
+    self.residual_connections = nn.ModuleList([ResidualConnection(dropout) for _ in range(2)]) # Residual connection for the self-attention block and feedforward block
 
   def forward(self, x, src_mask=None): # src mask is used to prevent attention to certain positions (e.g., padding tokens)
     x = self.residual_connections[0](x, lambda x: self.self_attention_block(x, x, x, src_mask)) # Apply the self-attention block with residual connection
@@ -201,7 +201,7 @@ class Transformer(nn.Module):
     src = self.src_pos(src) # Apply positional encoding to the source embeddings
     return self.encoder(src, src_mask) # Encode the source sequence using the encoder
   
-  def decode(self, tgt, encoder_output, src_mask, tgt_mask):
+  def decode(self, encoder_output: torch.Tensor, src_mask: torch.Tensor, tgt: torch.Tensor, tgt_mask: torch.Tensor):
     tgt = self.tgt_embed(tgt) # Apply the target embeddings to the target sequence
     tgt = self.tgt_pos(tgt) # Apply positional encoding to the target embeddings
     return self.decoder(tgt, encoder_output, src_mask, tgt_mask) # Decode the target sequence using the decoder

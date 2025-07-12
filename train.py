@@ -24,7 +24,8 @@ def get_all_sentences(ds, lang):
     yield item['translation'][lang]  # Assuming 'translation' is a dict with language keys
 def get_or_build_tokenizer(config, ds, lang):
   # config['tokenizer_file'] is a path to the tokenizer file
-  tokenizer_path = Path(config['tokenizer_file']).format(lang)
+  tokenizer_path = Path(config['tokenizer_file'].format(lang=lang))
+
   if not Path.exists(tokenizer_path): # if the tokenizer file does not exist
     tokenizer = Tokenizer(WordLevel(unk_token='[UNK]')) # create a new tokenizer
     tokenizer.pre_tokenizer = Whitespace() # set the pre-tokenizer to split on whitespace
@@ -86,7 +87,7 @@ def train_model(config):
   writer = SummaryWriter(config['experiment_name'])
 
   # Optimizer
-  optimizer = torch.optim.Adam(model.parameters(), lr = config['lr'], eps = le-9) # Adam optimizer with learning rate of 10^-4 and epsilon of 10^-9
+  optimizer = torch.optim.Adam(model.parameters(), lr = config['lr'], eps = 1e-9) # Adam optimizer with learning rate of 10^-4 and epsilon of 10^-9
 
   initial_epoch = 0
   global_step = 0
@@ -98,7 +99,7 @@ def train_model(config):
     optimizer.load_state_dict(state['optimizer_state_dict'])
     global_step = state['global_step']
 
-  loss_function = nn.CrossEntropyLoss(ignore_index=tokenizer_src.pad_token_id('[PAD]'), label_smoothing = 0.1).to(device) # define the loss function with ignore index of the padding token and label smoothing of 0.1
+  loss_function = nn.CrossEntropyLoss(ignore_index=tokenizer_src.token_to_id('[PAD]'), label_smoothing=0.1).to(device) # define the loss function with ignore index of the padding token and label smoothing of 0.1
 
   # Training loop
   for epoch in range(initial_epoch, config['num_epochs']):
