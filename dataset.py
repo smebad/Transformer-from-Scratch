@@ -74,13 +74,13 @@ class BilingualDataset(Dataset):
       "encoder_input": encoder_input, # seq_len
       "decoder_input": decoder_input, # seq_len
       "encoder_mask": (encoder_input != self.pad_token).unsqueeze(0).unsqueeze(0).int(), # (1, 1, seq_len)
-      "decoder_mask": (decoder_input != self.pad_token).unsqueeze(0).unsqueeze(0).int() & casual_mask(decoder_input.size(0)), # (1, seq_len) and (1, seq_len, seq_len) this is done to prevent the model from looking into the future
+      "decoder_mask": (decoder_input != self.pad_token).unsqueeze(0).unsqueeze(0).int() & causal_mask(decoder_input.size(0)), # (1, seq_len) and (1, seq_len, seq_len) this is done to prevent the model from looking into the future
       "label": label,
       "src_text": src_text,
       "tgt_text": tgt_text
       }
   
   
-def casual_mask(size):
+def causal_mask(size):
   mask = torch.triu(torch.ones(1, size, size), diagonal=1).type(torch.int) # create a triangular matrix with ones on the upper triangle and zeros on the lower triangle   
   return mask == 0 # convert the triangular matrix to a boolean mask
