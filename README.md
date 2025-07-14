@@ -34,7 +34,7 @@ The implementation follows the original Transformer architecture:
 
 ## 2. Dataset
 
-* **Source**: [OPUS Books](https://huggingface.co/datasets/opus_books)
+* **Source**: OPUS Books - HuggingFace
 * **Languages**: English to Spanish
 * **Tokenizer**: Custom trained WordLevel tokenizer with special tokens `[SOS]`, `[EOS]`, `[PAD]`, and `[UNK]`
 
